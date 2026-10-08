@@ -1,11 +1,29 @@
 
-def check_product(product_name):
-    return {
-        "product": product_name,
-        "available": True,
-        "price": 29.99,
-        "currency": "USD",
-        "status": "demo_data"
-    }
 
-print(check_product("Running Shoes"))
+from fastapi import FastAPI
+
+app = FastAPI(title="AgentPrice")
+
+@app.get("/")
+
+def home():
+
+    return {"message": "AgentPrice API is running"}
+
+@app.get("/check")
+
+def check_product(product: str):
+
+    return {
+
+        "product": product,
+
+        "available": True,
+
+        "price": 29.99,
+
+        "currency": "USD",
+
+        "status": "demo_data"
+
+    }
