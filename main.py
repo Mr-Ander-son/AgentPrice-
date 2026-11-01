@@ -8,7 +8,7 @@ app = FastAPI(title="AgentPrice")
 from fastapi import Header, HTTPException
 from agents import authenticate_agent
 from database import record_usage, DB_PATH
-from billing import get_billing_summary
+from billing import get_billing_summary, record_demo_check
 import sqlite3
 
 @app.get("/")
@@ -33,7 +33,8 @@ def check_product(
 
     result = lookup_product(barcode)
 
-    record_usage(agent["agent_id"], "/check", billable=False)
+    record_demo_check(agent["agent_id"])
+    
     return {
         **result,
         "agent_id": agent["agent_id"],

@@ -71,5 +71,30 @@ def get_billing_summary(agent_id: int):
         "payments_enabled": False
     }
 
+def record_demo_check(agent_id: int):
+    initialize_billing()
+
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+        cursor = conn.execute(
+            """
+            INSERT INTO usage_events (agent_id, endpoint, billable)
+            VALUES (?, ?, 0)
+            """,
+            (agent_id, "/check")
+        )
+
+        conn.execute(
+            """
+            INSERT INTO demo_billing_ledger
+                (usage_event_id, agent_id, amount_micro_usd, status)
+            VALUES (?, ?, ?, 'simulation')
+            """,
+            (cursor.lastrowid, agent_id, PRICE_MICRO_USD)
+        )
+
+
+
 if __name__ == "__main__":
     sync_demo_billing()
