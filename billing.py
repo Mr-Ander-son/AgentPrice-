@@ -1,4 +1,4 @@
-
+import json
 import sqlite3
 from database import DB_PATH, init_database
 
@@ -96,7 +96,12 @@ def record_demo_check(agent_id: int):
 
 
 
-def record_demo_check_once(agent_id: int, barcode: str, request_id: str):
+def record_demo_check_once(
+    agent_id: int,
+    barcode: str,
+    request_id: str,
+    response_data: dict | None = None
+):
     if not request_id or len(request_id) > 128:
         raise ValueError("Request ID must contain 1 to 128 characters")
 
@@ -105,13 +110,21 @@ def record_demo_check_once(agent_id: int, barcode: str, request_id: str):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
 
+        
         cursor = conn.execute(
             """
             INSERT OR IGNORE INTO usage_events
-                (agent_id, endpoint, billable, request_id, barcode)
-            VALUES (?, '/check', 0, ?, ?)
+                (agent_id, endpoint, billable, request_id,
+                 barcode, response_json)
+            VALUES (?, '/check', 0, ?, ?, ?)
             """,
-            (agent_id, request_id, barcode)
+            (
+                agent_id,
+                request_id,
+                barcode,
+                json.dumps(response_data)
+                if response_data is not None else None
+            )
         )
 
         if cursor.rowcount == 0:
@@ -141,6 +154,32 @@ def record_demo_check_once(agent_id: int, barcode: str, request_id: str):
         )
 
     return True
+
+def get_saved_response(agent_id: int, barcode: str, request_id: str):
+    initialize_billing()
+
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute(
+            """
+            SELECT barcode, response_json
+            FROM usage_events
+            WHERE agent_id = ? AND request_id = ?
+            """,
+            (agent_id, request_id)
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    if row[0] != barcode:
+        raise ValueError(
+            "Request ID already used for another barcode"
+        )
+
+    if row[1] is None:
+        return None
+
+    return json.loads(row[1])
 
 if __name__ == "__main__":
     sync_demo_billing()

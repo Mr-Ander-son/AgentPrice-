@@ -8,7 +8,11 @@ app = FastAPI(title="AgentPrice")
 from fastapi import Header, HTTPException
 from agents import authenticate_agent
 from database import record_usage, DB_PATH
-from billing import get_billing_summary, record_demo_check_once
+from billing import (
+    get_billing_summary,
+    record_demo_check_once,
+    get_saved_response
+)
 import sqlite3
 
 @app.get("/")
@@ -41,18 +45,26 @@ def check_product(
             detail="X-Request-ID must contain 1 to 128 characters"
         )
 
-    result = lookup_product(barcode)
-
-
+ 
     try:
-        new_request = record_demo_check_once(
+        saved = get_saved_response(
             agent["agent_id"], barcode, x_request_id
         )
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error))
 
+    if saved is not None:
+        return saved
 
-    return {
+    result = lookup_product(barcode)
+
+    if not result.get("found"):
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    response_data = {
         **result,
         "agent_id": agent["agent_id"],
         "price": None,
@@ -61,8 +73,26 @@ def check_product(
         "availability_verified": False
     }
 
+    try:
+        new_request = record_demo_check_once(
+            agent["agent_id"],
+            barcode,
+            x_request_id,
+            response_data
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error))
 
+    if not new_request:
+        saved = get_saved_response(
+            agent["agent_id"], barcode, x_request_id
+        )
+        if saved is not None:
+            return saved
 
+    return response_data
+
+    
 @app.get("/pricing")
 def pricing():
     return {

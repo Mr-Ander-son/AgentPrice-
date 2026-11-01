@@ -37,6 +37,12 @@ def init_database():
 
         if "barcode" not in columns:
             conn.execute("ALTER TABLE usage_events ADD COLUMN barcode TEXT")
+            
+        if "response_json" not in columns:
+            conn.execute(
+                "ALTER TABLE usage_events ADD COLUMN response_json TEXT"
+            )
+
 
         conn.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_agent_request
