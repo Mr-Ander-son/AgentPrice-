@@ -7,7 +7,8 @@ app = FastAPI(title="AgentPrice")
 
 from fastapi import Header, HTTPException
 from agents import authenticate_agent
-from database import record_usage
+from database import record_usage, DB_PATH
+import sqlite3
 
 @app.get("/")
 
@@ -53,7 +54,7 @@ def pricing():
     }
 
     
-@app.get("/lookup")
+
 def lookup_product(barcode: str):
     import json
     from urllib.request import Request, urlopen
@@ -127,16 +128,32 @@ async def track_usage(request, call_next):
     return response
 
 
+
 @app.get("/usage")
-def get_usage():
-    with usage_lock:
-        total = usage_stats["successful_checks"]
+def get_usage(
+    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key")
+):
+    if not x_agent_key:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    agent = authenticate_agent(x_agent_key)
+    if agent is None:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        total = conn.execute(
+            "SELECT COUNT(*) FROM usage_events WHERE agent_id = ? AND endpoint = ?",
+            (agent["agent_id"], "/check")
+        ).fetchone()[0]
 
     return {
-        "successful_checks": total,
+        "agent_id": agent["agent_id"],
+        "agent_name": agent["name"],
+        "total_checks": total,
         "price_per_check_usd": "0.001",
         "billing_status": "demo_only"
     }
+
 
 
     
