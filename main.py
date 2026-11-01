@@ -7,7 +7,7 @@ app = FastAPI(title="AgentPrice")
 
 from fastapi import Header, HTTPException
 from agents import authenticate_agent
-
+from database import record_usage
 
 @app.get("/")
 
@@ -31,6 +31,7 @@ def check_product(
 
     result = lookup_product(barcode)
 
+    record_usage(agent["agent_id"], "/check", billable=False)
     return {
         **result,
         "agent_id": agent["agent_id"],

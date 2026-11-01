@@ -31,3 +31,16 @@ def init_database():
 if __name__ == "__main__":
     init_database()
     print("AgentPrice database initialized!")
+
+    
+def record_usage(agent_id: int, endpoint: str, billable: bool = False):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            """
+            INSERT INTO usage_events (agent_id, endpoint, billable)
+            VALUES (?, ?, ?)
+            """,
+            (agent_id, endpoint, int(billable))
+        )
+
