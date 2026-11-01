@@ -31,3 +31,25 @@ if __name__ == "__main__":
         sys.exit(1)
 
     register_agent(sys.argv[1].strip())
+
+    
+def authenticate_agent(api_key: str):
+    if not api_key.startswith("ap_"):
+        return None
+
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+
+    with sqlite3.connect(DB_PATH) as conn:
+        agent = conn.execute(
+            "SELECT id, name FROM agents WHERE api_key_hash = ?",
+            (key_hash,)
+        ).fetchone()
+
+    if agent is None:
+        return None
+
+    return {
+        "agent_id": agent[0],
+        "name": agent[1],
+        "authenticated": True
+    }

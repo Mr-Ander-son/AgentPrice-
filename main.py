@@ -4,6 +4,11 @@ from fastapi import FastAPI
 
 app = FastAPI(title="AgentPrice")
 
+
+from fastapi import Header, HTTPException
+from agents import authenticate_agent
+
+
 @app.get("/")
 
 def home():
@@ -11,17 +16,30 @@ def home():
     return {"message": "AgentPrice API is running"}
 
 
+
 @app.get("/check")
-def check_product(barcode: str):
+def check_product(
+    barcode: str,
+    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key")
+):
+    if not x_agent_key:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    agent = authenticate_agent(x_agent_key)
+    if agent is None:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
     result = lookup_product(barcode)
 
     return {
         **result,
+        "agent_id": agent["agent_id"],
         "price": None,
         "available": None,
         "price_verified": False,
         "availability_verified": False
     }
+
 
 
 @app.get("/pricing")
