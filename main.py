@@ -91,4 +91,34 @@ def lookup_product(barcode: str):
     }
 
     
+from threading import Lock
+
+usage_lock = Lock()
+usage_stats = {"successful_checks": 0}
+
+
+@app.middleware("http")
+async def track_usage(request, call_next):
+    response = await call_next(request)
+
+    if request.url.path == "/check" and response.status_code == 200:
+        with usage_lock:
+            usage_stats["successful_checks"] += 1
+
+    return response
+
+
+@app.get("/usage")
+def get_usage():
+    with usage_lock:
+        total = usage_stats["successful_checks"]
+
+    return {
+        "successful_checks": total,
+        "price_per_check_usd": "0.001",
+        "billing_status": "demo_only"
+    }
+
+
+    
    
