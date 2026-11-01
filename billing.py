@@ -46,5 +46,30 @@ def sync_demo_billing():
             )
 
 
+def get_billing_summary(agent_id: int):
+    initialize_billing()
+
+    with sqlite3.connect(DB_PATH) as conn:
+        demo = conn.execute("""
+            SELECT COUNT(*), COALESCE(SUM(amount_micro_usd), 0)
+            FROM demo_billing_ledger
+            WHERE agent_id = ? AND status = 'simulation'
+        """, (agent_id,)).fetchone()
+
+        billable = conn.execute("""
+            SELECT COUNT(*)
+            FROM usage_events
+            WHERE agent_id = ? AND billable = 1
+        """, (agent_id,)).fetchone()[0]
+
+    return {
+        "agent_id": agent_id,
+        "simulated_checks": demo[0],
+        "simulated_total_usd": f"{demo[1] / 1000000:.3f}",
+        "billable_events": billable,
+        "amount_due_usd": "0.000",
+        "payments_enabled": False
+    }
+
 if __name__ == "__main__":
     sync_demo_billing()

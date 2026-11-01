@@ -8,6 +8,7 @@ app = FastAPI(title="AgentPrice")
 from fastapi import Header, HTTPException
 from agents import authenticate_agent
 from database import record_usage, DB_PATH
+from billing import get_billing_summary
 import sqlite3
 
 @app.get("/")
@@ -153,6 +154,21 @@ def get_usage(
         "price_per_check_usd": "0.001",
         "billing_status": "demo_only"
     }
+
+  
+@app.get("/billing")
+def get_billing(
+    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key")
+):
+    if not x_agent_key:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    agent = authenticate_agent(x_agent_key)
+    if agent is None:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    return get_billing_summary(agent["agent_id"])
+  
 
 
 
