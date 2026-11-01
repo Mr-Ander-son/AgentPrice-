@@ -96,5 +96,51 @@ def record_demo_check(agent_id: int):
 
 
 
+def record_demo_check_once(agent_id: int, barcode: str, request_id: str):
+    if not request_id or len(request_id) > 128:
+        raise ValueError("Request ID must contain 1 to 128 characters")
+
+    initialize_billing()
+
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+        cursor = conn.execute(
+            """
+            INSERT OR IGNORE INTO usage_events
+                (agent_id, endpoint, billable, request_id, barcode)
+            VALUES (?, '/check', 0, ?, ?)
+            """,
+            (agent_id, request_id, barcode)
+        )
+
+        if cursor.rowcount == 0:
+            existing = conn.execute(
+                """
+                SELECT barcode FROM usage_events
+                WHERE agent_id = ? AND request_id = ?
+                """,
+                (agent_id, request_id)
+            ).fetchone()
+
+            if existing is None:
+                raise RuntimeError("Could not record request")
+
+            if existing[0] != barcode:
+                raise ValueError("Request ID already used for another barcode")
+
+            return False
+
+        conn.execute(
+            """
+            INSERT INTO demo_billing_ledger
+                (usage_event_id, agent_id, amount_micro_usd, status)
+            VALUES (?, ?, ?, 'simulation')
+            """,
+            (cursor.lastrowid, agent_id, PRICE_MICRO_USD)
+        )
+
+    return True
+
 if __name__ == "__main__":
     sync_demo_billing()

@@ -8,7 +8,7 @@ app = FastAPI(title="AgentPrice")
 from fastapi import Header, HTTPException
 from agents import authenticate_agent
 from database import record_usage, DB_PATH
-from billing import get_billing_summary, record_demo_check
+from billing import get_billing_summary, record_demo_check_once
 import sqlite3
 
 @app.get("/")
@@ -20,10 +20,13 @@ def home():
 
 
 @app.get("/check")
+
 def check_product(
     barcode: str,
-    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key")
+    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key"),
+    x_request_id: str | None = Header(default=None, alias="X-Request-ID")
 ):
+
     if not x_agent_key:
         raise HTTPException(status_code=401, detail="API key required")
 
@@ -31,10 +34,24 @@ def check_product(
     if agent is None:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
+
+    if not x_request_id or not x_request_id.strip() or len(x_request_id) > 128:
+        raise HTTPException(
+            status_code=400,
+            detail="X-Request-ID must contain 1 to 128 characters"
+        )
+
     result = lookup_product(barcode)
 
-    record_demo_check(agent["agent_id"])
-    
+
+    try:
+        new_request = record_demo_check_once(
+            agent["agent_id"], barcode, x_request_id
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error))
+
+
     return {
         **result,
         "agent_id": agent["agent_id"],

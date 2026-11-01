@@ -28,6 +28,22 @@ def init_database():
         """)
 
 
+        columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(usage_events)")
+        }
+
+        if "request_id" not in columns:
+            conn.execute("ALTER TABLE usage_events ADD COLUMN request_id TEXT")
+
+        if "barcode" not in columns:
+            conn.execute("ALTER TABLE usage_events ADD COLUMN barcode TEXT")
+
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_agent_request
+            ON usage_events (agent_id, request_id)
+            WHERE request_id IS NOT NULL
+        """)
+
 if __name__ == "__main__":
     init_database()
     print("AgentPrice database initialized!")
