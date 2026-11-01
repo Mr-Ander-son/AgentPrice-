@@ -10,23 +10,19 @@ def home():
 
     return {"message": "AgentPrice API is running"}
 
-@app.get("/check")
 
-def check_product(product: str):
+@app.get("/check")
+def check_product(barcode: str):
+    result = lookup_product(barcode)
 
     return {
-
-        "product": product,
-
-        "available": True,
-
-        "price": 29.99,
-
-        "currency": "USD",
-
-        "status": "demo_data"
-
+        **result,
+        "price": None,
+        "available": None,
+        "price_verified": False,
+        "availability_verified": False
     }
+
 
 @app.get("/pricing")
 def pricing():
