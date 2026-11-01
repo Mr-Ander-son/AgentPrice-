@@ -27,3 +27,14 @@ def check_product(product: str):
         "status": "demo_data"
 
     }
+
+@app.get("/pricing")
+def pricing():
+    return {
+        "service": "AgentPrice",
+        "price_per_check_usd": "0.001",
+        "billing_status": "demo_only",
+        "payment_required": False
+    }
+    
+   
