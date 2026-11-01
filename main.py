@@ -186,6 +186,48 @@ def get_billing(
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     return get_billing_summary(agent["agent_id"])
+
+    
+@app.get("/billing/history")
+def billing_history(
+    x_agent_key: str | None = Header(default=None, alias="X-Agent-Key")
+):
+    if not x_agent_key:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    agent = authenticate_agent(x_agent_key)
+    if agent is None:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            """
+            SELECT u.request_id, u.barcode, u.created_at,
+                   l.amount_micro_usd, l.status
+            FROM demo_billing_ledger AS l
+            JOIN usage_events AS u ON u.id = l.usage_event_id
+            WHERE l.agent_id = ? AND u.agent_id = ?
+            ORDER BY l.usage_event_id DESC
+            LIMIT 20
+            """,
+            (agent["agent_id"], agent["agent_id"])
+        ).fetchall()
+
+    return {
+        "agent_id": agent["agent_id"],
+        "payments_enabled": False,
+        "transactions": [
+            {
+                "request_id": row[0],
+                "barcode": row[1],
+                "date": row[2],
+                "amount_micro_usd": row[3],
+                "status": row[4]
+            }
+            for row in rows
+        ]
+    }
+
   
 
 
