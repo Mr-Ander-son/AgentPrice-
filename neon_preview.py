@@ -228,3 +228,14 @@ def check_product_neon(
         )
 
     return result
+
+
+
+@app.get("/pricing")
+def get_pricing_neon():
+    return {
+        "service": "AgentPrice",
+        "price_per_check_usd": "0.001",
+        "billing_status": "demo_only",
+        "payment_required": False
+    }
